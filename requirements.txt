@@ -1,0 +1,10 @@
+pandas
+pandas-ta
+numpy
+akshare
+yfinance
+streamlit
+plotly
+vectorbt
+requests
+apscheduler
