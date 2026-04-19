@@ -51,7 +51,11 @@ class Backtester:
             row = df.iloc[i]
             price = row['close']
             
-            # Simulated Signal (vectorized logic for backtest)
+            # Skip invalid prices (can happen with QFQ on old data)
+            if price <= 0:
+                total_value = cash + (core_pos + trading_pos) * price
+                equity.append(total_value)
+                continue
             signal = 'HOLD'
             if row['close'] < row['bb_lower'] and row['rsi'] < strategy.rsi_low:
                 signal = 'BUY'
