@@ -45,6 +45,14 @@ class Backtester:
         core_cash = self.initial_cash * self.core_ratio
         core_pos = core_cash / first_price
         cash -= core_cash
+        trades.append({
+            'date': df.index[0], 
+            'action': 'BUY', 
+            'price': first_price, 
+            'qty': core_pos,
+            'amount': core_cash,
+            'cash_left': cash
+        })
         
         # Trading Loop
         for i in range(len(df)):
