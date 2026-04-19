@@ -76,8 +76,12 @@ class Backtester:
             
             # Execute Trading Portion
             if signal == 'BUY' and cash > 0:
-                # Buy trading position using half of remaining cash
-                buy_amt_limit = cash * 0.5
+                # Buy trading position using a percentage of total equity
+                # Aim to use ~20% of total current value for each trade if possible
+                target_buy_amt = total_value * 0.2
+                # But don't exceed current cash
+                buy_amt_limit = min(target_buy_amt, cash)
+                
                 # Enforce lot size: n*100, min 100
                 buy_qty = (buy_amt_limit // (price * 100)) * 100
                 
