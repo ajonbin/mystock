@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+from datetime import timedelta
 from data.data_provider import StockDataClient
 from strategy.strategy import GridTStrategy
 from backtest.backtester import Backtester
@@ -106,7 +107,7 @@ else:
     # Start Date Selection for Backtest
     min_date = df.index.min().date()
     max_date = df.index.max().date()
-    default_start = max(min_date, max_date - pd.Timedelta(days=365).date())
+    default_start = max(min_date, max_date - timedelta(days=365))
     bt_start_date = st.date_input(get_text("backtest_start_date", L), value=default_start, min_value=min_date, max_value=max_date)
 
     if st.button(get_text("run_backtest", L)):
