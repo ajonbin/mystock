@@ -154,8 +154,14 @@ else:
                 st.write(get_text("recent_trades", L))
                 trades_display = res.trades.copy()
                 if not trades_display.empty:
+                    # Format Quantity with +/-
+                    trades_display['qty'] = trades_display.apply(
+                        lambda row: f"+{row['qty']:.0f}" if row['action'] == 'BUY' else f"-{row['qty']:.0f}", axis=1
+                    )
+                    
                     # Localize actions
                     trades_display['action'] = trades_display['action'].apply(lambda x: get_text(x, L))
+                    
                     # Localize column headers
                     column_mapping = {
                         'date': get_text("col_date", L),
@@ -163,11 +169,23 @@ else:
                         'price': get_text("col_price", L),
                         'qty': get_text("col_qty", L),
                         'total_qty': get_text("col_total_qty", L),
+                        'total_value': get_text("col_total_value", L),
                         'amount': get_text("col_amount", L),
                         'cash_left': get_text("col_cash_left", L)
                     }
                     trades_display = trades_display.rename(columns=column_mapping)
-                st.dataframe(trades_display)
+
+                    # Apply Coloring
+                    def color_rows(row):
+                        action_col = get_text("col_action", L)
+                        if row[action_col] == get_text("BUY", L):
+                            return ['background-color: rgba(255, 0, 0, 0.2)'] * len(row)
+                        elif row[action_col] == get_text("SELL", L):
+                            return ['background-color: rgba(0, 255, 0, 0.2)'] * len(row)
+                        return [''] * len(row)
+                    
+                    styled_trades = trades_display.style.apply(color_rows, axis=1)
+                    st.dataframe(styled_trades)
         else:
             st.error(get_text("no_data", L))
 
