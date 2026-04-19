@@ -111,10 +111,11 @@ else:
     bt_start_date = st.date_input(get_text("backtest_start_date", L), value=default_start, min_value=min_date, max_value=max_date)
 
     if st.button(get_text("run_backtest", L)):
-        # If current data is not HFQ, fetch HFQ data specifically for backtest
-        if adjust != "hfq":
-            with st.spinner(f"{get_text('fetching_data', L)} (HFQ)..."):
-                bt_df = client.get_history(symbol, period=period, interval=interval, adjust="hfq")
+        # Use QFQ by default for backtest to match intuitive prices
+        # Only fetch if the current 'adjust' is not already 'qfq'
+        if adjust != "qfq":
+            with st.spinner(f"{get_text('fetching_data', L)} (QFQ)..."):
+                bt_df = client.get_history(symbol, period=period, interval=interval, adjust="qfq")
         else:
             bt_df = df.copy()
             
