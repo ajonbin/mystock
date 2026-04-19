@@ -162,6 +162,7 @@ else:
                         'action': get_text("col_action", L),
                         'price': get_text("col_price", L),
                         'qty': get_text("col_qty", L),
+                        'total_qty': get_text("col_total_qty", L),
                         'amount': get_text("col_amount", L),
                         'cash_left': get_text("col_cash_left", L)
                     }

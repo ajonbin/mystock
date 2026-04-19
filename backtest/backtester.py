@@ -55,7 +55,8 @@ class Backtester:
                 'price': first_price, 
                 'qty': core_pos,
                 'amount': actual_core_cash,
-                'cash_left': cash
+                'cash_left': cash,
+                'total_qty': core_pos
             })
         
         # Trading Loop
@@ -95,7 +96,8 @@ class Backtester:
                         'price': price, 
                         'qty': buy_qty,
                         'amount': actual_buy_amt,
-                        'cash_left': cash
+                        'cash_left': cash,
+                        'total_qty': core_pos + trading_pos
                     })
             elif signal == 'SELL' and trading_pos > 0:
                 # Sell all trading position
@@ -107,7 +109,8 @@ class Backtester:
                     'price': price, 
                     'qty': trading_pos,
                     'amount': sell_amt,
-                    'cash_left': cash
+                    'cash_left': cash,
+                    'total_qty': core_pos # After selling all trading pos, only core remains
                 })
                 trading_pos = 0
                 
