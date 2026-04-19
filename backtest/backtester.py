@@ -117,16 +117,21 @@ class Backtester:
         equity_curve = pd.Series(equity, index=df.index)
         
         # Metrics
-        total_return = (equity_curve.iloc[-1] / self.initial_cash) - 1
+        final_equity = equity_curve.iloc[-1]
+        total_return = (final_equity / self.initial_cash) - 1
         bh_return = (df['close'].iloc[-1] / df['close'].iloc[0]) - 1
         max_drawdown = (equity_curve / equity_curve.cummax() - 1).min()
         
+        final_price = df['close'].iloc[-1]
         metrics = {
             'Total Return': f"{total_return:.2%}",
             'Buy & Hold Return': f"{bh_return:.2%}",
             'Max Drawdown': f"{max_drawdown:.2%}",
-            'Final Value': f"{equity_curve.iloc[-1]:.2f}",
-            'Trade Count': len(trades)
+            'Final Value': f"{final_equity:.2f}",
+            'Trade Count': len(trades),
+            'Cash': f"{cash:.2f}",
+            'Core Value': f"{core_pos * final_price:.2f}",
+            'Trading Value': f"{trading_pos * final_price:.2f}"
         }
         
         return BacktestResult(pd.DataFrame(trades), equity_curve, metrics)
