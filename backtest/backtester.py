@@ -89,9 +89,9 @@ class Backtester:
                 continue
 
             signal = 'HOLD'
-            if row['close'] < row['bb_lower'] and row['rsi'] < strategy.rsi_low:
+            if (row['close'] < row['bb_lower']) or (row['close'] < row['ema_mid'] and row['rsi'] < strategy.rsi_low + 5):
                 signal = 'BUY'
-            elif row['close'] > row['bb_upper'] and row['rsi'] > strategy.rsi_high:
+            elif (row['close'] > row['bb_upper']) or (row['close'] > row['ema_mid'] and row['rsi'] > strategy.rsi_high - 5):
                 signal = 'SELL'
             
             # Execute Trading Portion

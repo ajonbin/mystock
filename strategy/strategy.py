@@ -76,14 +76,14 @@ class GridTStrategy:
         # Trend Filter (EMA60)
         is_uptrend = close > latest['ema_long']
         
-        # Buy Signal (T+ In): Price < BB Lower AND RSI < 30 AND Support Level (e.g. S1/EMA20)
-        if close < latest['bb_lower'] and latest['rsi'] < self.rsi_low:
-            reason = f"Price ({close:.2f}) < BB Lower ({latest['bb_lower']:.2f}) and RSI ({latest['rsi']:.1f}) < {self.rsi_low}"
+        # Buy Signal (T+ In): Price < BB Lower OR (Price < EMA20 AND RSI < 35)
+        if (close < latest['bb_lower']) or (close < latest['ema_mid'] and latest['rsi'] < self.rsi_low + 5):
+            reason = f"Price ({close:.2f}) < BB Lower ({latest['bb_lower']:.2f}) or Oversold"
             return TradingSignal('BUY', close, reason)
             
-        # Sell Signal (T+ Out): Price > BB Upper AND RSI > 70
-        if close > latest['bb_upper'] and latest['rsi'] > self.rsi_high:
-            reason = f"Price ({close:.2f}) > BB Upper ({latest['bb_upper']:.2f}) and RSI ({latest['rsi']:.1f}) > {self.rsi_high}"
+        # Sell Signal (T+ Out): Price > BB Upper OR (Price > EMA20 AND RSI > 65)
+        if (close > latest['bb_upper']) or (close > latest['ema_mid'] and latest['rsi'] > self.rsi_high - 5):
+            reason = f"Price ({close:.2f}) > BB Upper ({latest['bb_upper']:.2f}) or Overbought"
             return TradingSignal('SELL', close, reason)
             
         return TradingSignal('HOLD', close, "Neutral conditions")
