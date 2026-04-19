@@ -120,16 +120,10 @@ else:
             bt_df = df.copy()
             
         if not bt_df.empty:
-            # Filter by start date
-            bt_df = bt_df[bt_df.index.date >= bt_start_date]
+            tester = Backtester()
+            res = tester.run(bt_df, strategy, start_date=bt_start_date)
             
-            if bt_df.empty:
-                st.error(get_text("no_data", L))
-            else:
-                tester = Backtester()
-                res = tester.run(bt_df, strategy)
-                
-                if res.trades.empty:
+            if res.trades.empty:
                     st.warning(get_text("insufficient_capital", L))
                 else:
                     # Display Metrics

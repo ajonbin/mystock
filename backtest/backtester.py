@@ -19,16 +19,28 @@ class Backtester:
         self.core_ratio = core_ratio
         self.initial_cash = initial_cash
 
-    def run(self, df: pd.DataFrame, strategy: GridTStrategy) -> BacktestResult:
+    def run(self, df: pd.DataFrame, strategy: GridTStrategy, start_date=None) -> BacktestResult:
         """
         Execute backtest.
-        :param df: Prepared DataFrame with indicators.
+        :param df: Prepared DataFrame with indicators (or full history).
+        :param start_date: Optional date to begin trading simulation.
         :return: BacktestResult object.
         """
-        # Prepare signals for all data points
-        # For simplicity, we can't use strategy.check_signals in a loop for every row 
-        # because it only checks the latest. We need a vectorized or looped signals list.
+        # Calculate indicators for the whole df to ensure warmup/stability
+        df = strategy.compute_indicators(df)
         
+        # Filter for trading range if start_date is provided
+        if start_date:
+            # Handle string or date object
+            if isinstance(start_date, str):
+                start_date = pd.to_datetime(start_date).date()
+            sim_df = df[df.index.date >= start_date]
+        else:
+            sim_df = df
+
+        if sim_df.empty:
+            return BacktestResult(pd.DataFrame(), pd.Series(), {})
+
         # Simple loop-based simulation for 'Core + Trading'
         cash = self.initial_cash
         core_pos = 0
@@ -37,11 +49,8 @@ class Backtester:
         equity = []
         trades = []
         
-        # Calculate indicators for the whole df
-        df = strategy.compute_indicators(df)
-        
-        # Initial core position (buy at first day)
-        first_price = df.iloc[0]['close']
+        # Initial core position (buy at first available day in sim_df)
+        first_price = sim_df.iloc[0]['close']
         preferred_core_cash = self.initial_cash * self.core_ratio
         
         # Enforce lot size: n*100, min 100. 
@@ -56,7 +65,7 @@ class Backtester:
             actual_core_cash = core_qty * first_price
             cash -= actual_core_cash
             trades.append({
-                'date': df.index[0], 
+                'date': sim_df.index[0], 
                 'action': 'BUY', 
                 'price': first_price, 
                 'qty': core_pos,
@@ -67,15 +76,18 @@ class Backtester:
             })
         
         # Trading Loop
-        for i in range(len(df)):
-            row = df.iloc[i]
+        for i in range(len(sim_df)):
+            row = sim_df.iloc[i]
             price = row['close']
             
+            # Current total value (for position sizing)
+            current_total_value = cash + (core_pos + trading_pos) * price
+
             # Skip invalid prices (can happen with QFQ on old data)
             if price <= 0:
-                total_value = cash + (core_pos + trading_pos) * price
-                equity.append(total_value)
+                equity.append(current_total_value)
                 continue
+
             signal = 'HOLD'
             if row['close'] < row['bb_lower'] and row['rsi'] < strategy.rsi_low:
                 signal = 'BUY'
@@ -86,7 +98,7 @@ class Backtester:
             if signal == 'BUY' and cash > 0:
                 # Buy trading position using a percentage of total equity
                 # Aim to use ~20% of total current value for each trade if possible
-                target_buy_amt = total_value * 0.2
+                target_buy_amt = current_total_value * 0.2
                 
                 # If 20% is not enough for 100 shares, allow using more of available cash (up to 90%)
                 if target_buy_amt < price * 100:
@@ -103,7 +115,7 @@ class Backtester:
                     actual_buy_amt = buy_qty * price
                     cash -= actual_buy_amt
                     trades.append({
-                        'date': df.index[i], 
+                        'date': sim_df.index[i], 
                         'action': 'BUY', 
                         'price': price, 
                         'qty': buy_qty,
@@ -117,7 +129,7 @@ class Backtester:
                 sell_amt = trading_pos * price
                 cash += sell_amt
                 trades.append({
-                    'date': df.index[i], 
+                    'date': sim_df.index[i], 
                     'action': 'SELL', 
                     'price': price, 
                     'qty': trading_pos,
@@ -128,18 +140,20 @@ class Backtester:
                 })
                 trading_pos = 0
                 
-            total_value = cash + (core_pos + trading_pos) * price
-            equity.append(total_value)
+            equity.append(cash + (core_pos + trading_pos) * price)
             
-        equity_curve = pd.Series(equity, index=df.index)
+        equity_curve = pd.Series(equity, index=sim_df.index)
         
         # Metrics
+        if equity_curve.empty:
+             return BacktestResult(pd.DataFrame(), pd.Series(), {})
+
         final_equity = equity_curve.iloc[-1]
         total_return = (final_equity / self.initial_cash) - 1
-        bh_return = (df['close'].iloc[-1] / df['close'].iloc[0]) - 1
+        bh_return = (sim_df['close'].iloc[-1] / sim_df['close'].iloc[0]) - 1
         max_drawdown = (equity_curve / equity_curve.cummax() - 1).min()
         
-        final_price = df['close'].iloc[-1]
+        final_price = sim_df['close'].iloc[-1]
         metrics = {
             'Total Return': f"{total_return:.2%}",
             'Buy & Hold Return': f"{bh_return:.2%}",
