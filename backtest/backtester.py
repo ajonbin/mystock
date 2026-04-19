@@ -38,6 +38,10 @@ class Backtester:
         else:
             sim_df = df
 
+        # Filter out invalid prices (can happen with QFQ on old data)
+        # Reality check: You can't trade at zero or negative prices
+        sim_df = sim_df[sim_df['close'] > 0]
+
         if sim_df.empty:
             return BacktestResult(pd.DataFrame(), pd.Series(), {})
 
