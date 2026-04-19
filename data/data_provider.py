@@ -2,6 +2,7 @@ import pandas as pd
 import akshare as ak
 import yfinance as yf
 from datetime import datetime, timedelta
+from data.storage import StockStorage
 
 
 class StockDataClient:
@@ -9,31 +10,83 @@ class StockDataClient:
     Data client for fetching historical and real-time stock data.
     Supports A-shares (via AkShare) and Global shares (via yfinance).
     """
+    def __init__(self):
+        self.storage = StockStorage()
 
-    @staticmethod
-    def get_history(symbol: str, period: str = "daily", interval: str = "1d", start_date: str = None, end_date: str = None) -> pd.DataFrame:
+    def get_history(self, symbol: str, period: str = "daily", interval: str = "1d", start_date: str = None, end_date: str = None) -> pd.DataFrame:
+        """
+        Fetch historical K-line data with local caching.
+        """
+        # 1. Try to load from local storage
+        df_local = self.storage.load_data(symbol, period, interval)
+        
+        # If specific dates are requested, we might need to bypass cache or handle it specifically
+        # For the dashboard's general use, we usually want the latest data.
+        
+        last_date = None
+        if not df_local.empty:
+            last_date = df_local.index.max()
+            
+            # If the last date is today (or very recent), we might not need to fetch
+            # But markets might be open, so we usually fetch missing days.
+            if end_date is None:
+                today = datetime.now().date()
+                if last_date.date() >= today:
+                    # If it's a daily interval and we have today's data (maybe incomplete), 
+                    # we might still want to refresh the last row.
+                    pass
 
+        # 2. Determine missing range
+        fetch_start = start_date
+        if last_date is not None and start_date is None:
+            # Fetch from the day after the last stored date
+            fetch_start = (last_date + timedelta(days=1)).strftime("%Y%m%d" if not any(char.isalpha() for char in symbol[:3]) else "%Y-%m-%d")
+
+        # 3. Fetch missing data from network
+        df_new = self._fetch_from_network(symbol, period, interval, start_date=fetch_start, end_date=end_date)
+        
+        if df_new.empty:
+            return df_local
+
+        # 4. Merge and Save
+        if df_local.empty:
+            df_final = df_new
+        else:
+            # Combine and remove duplicates (keep newest)
+            df_final = pd.concat([df_local, df_new])
+            df_final = df_final[~df_final.index.duplicated(keep='last')].sort_index()
+
+        self.storage.save_data(symbol, period, interval, df_final)
+        return df_final
+
+    def _fetch_from_network(self, symbol: str, period: str = "daily", interval: str = "1d", start_date: str = None, end_date: str = None) -> pd.DataFrame:
         """
-        Fetch historical K-line data.
-        :param symbol: Stock symbol (e.g., '600519' for A-shares, 'AAPL' for US shares).
-        :param period: 'daily', 'weekly', 'monthly'.
-        :param interval: '1m', '5m', '15m', '30m', '60m', '1d', '1wk', '1mo'.
-        :param start_date: Format 'YYYYMMDD' for AkShare, 'YYYY-MM-DD' for yfinance.
-        :param end_date: Same format as start_date.
-        :return: DataFrame with columns [Date, Open, High, Low, Close, Volume].
+        Core logic to fetch from yfinance or AkShare.
         """
+        print(f"Fetching from network: {symbol}, start={start_date}, end={end_date}")
         if any(char.isalpha() for char in symbol[:3]): # Simple heuristic for non-A-share symbols
             # Use yfinance for non-A-shares
-            ticker = yf.Ticker(symbol)
-            df = ticker.history(start=start_date, end=end_date, interval=interval)
-            df.index = df.index.tz_localize(None) # Remove timezone for consistency
-            return df
+            try:
+                ticker = yf.Ticker(symbol)
+                # yfinance expects YYYY-MM-DD
+                df = ticker.history(start=start_date, end=end_date, interval=interval)
+                if not df.empty:
+                    df.index = df.index.tz_localize(None)
+                    # Standardize columns
+                    df = df[['Open', 'High', 'Low', 'Close', 'Volume']]
+                return df
+            except Exception as e:
+                print(f"Error fetching from yfinance: {e}")
+                return pd.DataFrame()
         else:
             # Use AkShare for A-shares
-            # Mapping period for AkShare: daily, weekly, monthly
-            # Mapping adjust for AkShare: qfq (front-adjusted), hfq (back-adjusted), "" (none)
             try:
-                # Passing None for start_date/end_date causes empty DF, only pass if they are provided
+                # AkShare expects YYYYMMDD
+                if start_date and "-" in start_date:
+                    start_date = start_date.replace("-", "")
+                if end_date and "-" in end_date:
+                    end_date = end_date.replace("-", "")
+
                 fetch_args = {
                     "symbol": symbol,
                     "period": period,
@@ -47,26 +100,18 @@ class StockDataClient:
                 df = ak.stock_zh_a_hist(**fetch_args)
                 
                 if df.empty:
-                    print(f"Warning: No A-share data found for {symbol}")
                     return pd.DataFrame()
 
-                # Expected columns: ['日期', '股票代码', '开盘', '收盘', '最高', '最低', '成交量', '成交额', '振幅', '涨跌幅', '涨跌额', '换手率'] (12 columns)
-                # Ensure we have the right number of columns
                 if len(df.columns) == 12:
                     df.columns = ['Date', 'Symbol', 'Open', 'Close', 'High', 'Low', 'Volume', 'Turnover', 'Amplitude', 'Pct_Change', 'Change_Amount', 'Turnover_Rate']
                 elif len(df.columns) == 11:
                     df.columns = ['Date', 'Open', 'Close', 'High', 'Low', 'Volume', 'Turnover', 'Amplitude', 'Pct_Change', 'Change_Amount', 'Turnover_Rate']
-                else:
-                     print(f"Unexpected column count: {len(df.columns)} for {symbol}")
-                     return pd.DataFrame()
-
+                
                 df['Date'] = pd.to_datetime(df['Date'])
                 df.set_index('Date', inplace=True)
                 return df[['Open', 'High', 'Low', 'Close', 'Volume']]
             except Exception as e:
-                print(f"Error fetching A-share data: {e}")
-                import traceback
-                traceback.print_exc()
+                print(f"Error fetching from AkShare: {e}")
                 return pd.DataFrame()
 
     @staticmethod
@@ -100,9 +145,12 @@ class StockDataClient:
             return {}
 
 if __name__ == "__main__":
-    # Quick test
     client = StockDataClient()
-    print("Testing yfinance (AAPL)...")
-    print(client.get_history("600036", interval="1d").tail())
-    # print("Testing AkShare (600519)...")
-    # print(client.get_history("600519").tail())
+    print("Testing caching for 600036...")
+    df = client.get_history("600036")
+    print(f"Total rows: {len(df)}")
+    print(df.tail(2))
+    
+    print("\nSecond call (should be faster/no new fetch if up to date):")
+    df2 = client.get_history("600036")
+    print(f"Total rows: {len(df2)}")
