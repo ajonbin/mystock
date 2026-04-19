@@ -42,9 +42,15 @@ class Backtester:
         
         # Initial core position (buy at first day)
         first_price = df.iloc[0]['close']
-        core_cash = self.initial_cash * self.core_ratio
-        core_qty = (core_cash // (first_price * 100)) * 100
+        preferred_core_cash = self.initial_cash * self.core_ratio
         
+        # Enforce lot size: n*100, min 100. 
+        # If preferred amount is less than 100 shares, try to buy at least 100 shares 
+        # if it doesn't exceed 80% of total initial cash.
+        core_qty = (preferred_core_cash // (first_price * 100)) * 100
+        if core_qty < 100 and self.initial_cash * 0.8 >= (first_price * 100):
+            core_qty = 100
+            
         if core_qty > 0:
             core_pos = core_qty
             actual_core_cash = core_qty * first_price
@@ -81,6 +87,11 @@ class Backtester:
                 # Buy trading position using a percentage of total equity
                 # Aim to use ~20% of total current value for each trade if possible
                 target_buy_amt = total_value * 0.2
+                
+                # If 20% is not enough for 100 shares, allow using more of available cash (up to 90%)
+                if target_buy_amt < price * 100:
+                    target_buy_amt = cash * 0.9
+
                 # But don't exceed current cash
                 buy_amt_limit = min(target_buy_amt, cash)
                 
