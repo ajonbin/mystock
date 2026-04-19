@@ -15,7 +15,7 @@ class Backtester:
     Core: Static long-term holding.
     Trading: Dynamic buy/sell signals for profit.
     """
-    def __init__(self, core_ratio=0.5, initial_cash=100000):
+    def __init__(self, core_ratio=0.5, initial_cash=10000):
         self.core_ratio = core_ratio
         self.initial_cash = initial_cash
 

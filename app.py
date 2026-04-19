@@ -103,30 +103,40 @@ else:
     # Backtest Section
     st.subheader(get_text("backtest_header", L))
     if st.button(get_text("run_backtest", L)):
-        tester = Backtester()
-        res = tester.run(df, strategy)
-        
-        # Display Metrics
-        m_col1, m_col2, m_col3, m_col4, m_col5 = st.columns(5)
-        m_col1.metric(get_text("total_return", L), res.metrics['Total Return'])
-        m_col2.metric(get_text("buy_hold_return", L), res.metrics['Buy & Hold Return'])
-        m_col3.metric(get_text("max_drawdown", L), res.metrics['Max Drawdown'])
-        m_col4.metric(get_text("trade_count", L), res.metrics['Trade Count'])
-        m_col5.metric(get_text("final_value", L), res.metrics['Final Value'])
-        
-        # Equity Curve
-        fig_equity = go.Figure()
-        fig_equity.add_trace(go.Scatter(x=res.equity_curve.index, y=res.equity_curve, name=get_text("equity_growth", L)))
-        fig_equity.update_layout(title=get_text("equity_growth", L), height=400)
-        st.plotly_chart(fig_equity, use_container_width=True)
-        
-        # Trade Log
-        st.write(get_text("recent_trades", L))
-        # Optional: Localize actions in trades dataframe
-        trades_display = res.trades.copy()
-        if not trades_display.empty:
-            trades_display['action'] = trades_display['action'].apply(lambda x: get_text(x, L))
-        st.dataframe(trades_display)
+        # If current data is not HFQ, fetch HFQ data specifically for backtest
+        if adjust != "hfq":
+            with st.spinner(f"{get_text('fetching_data', L)} (HFQ)..."):
+                bt_df = client.get_history(symbol, period=period, interval=interval, adjust="hfq")
+        else:
+            bt_df = df.copy()
+            
+        if not bt_df.empty:
+            tester = Backtester()
+            res = tester.run(bt_df, strategy)
+            
+            # Display Metrics
+            m_col1, m_col2, m_col3, m_col4, m_col5 = st.columns(5)
+            m_col1.metric(get_text("total_return", L), res.metrics['Total Return'])
+            m_col2.metric(get_text("buy_hold_return", L), res.metrics['Buy & Hold Return'])
+            m_col3.metric(get_text("max_drawdown", L), res.metrics['Max Drawdown'])
+            m_col4.metric(get_text("trade_count", L), res.metrics['Trade Count'])
+            m_col5.metric(get_text("final_value", L), res.metrics['Final Value'])
+            
+            # Equity Curve
+            fig_equity = go.Figure()
+            fig_equity.add_trace(go.Scatter(x=res.equity_curve.index, y=res.equity_curve, name=get_text("equity_growth", L)))
+            fig_equity.update_layout(title=get_text("equity_growth", L), height=400)
+            st.plotly_chart(fig_equity, use_container_width=True)
+            
+            # Trade Log
+            st.write(get_text("recent_trades", L))
+            # Optional: Localize actions in trades dataframe
+            trades_display = res.trades.copy()
+            if not trades_display.empty:
+                trades_display['action'] = trades_display['action'].apply(lambda x: get_text(x, L))
+            st.dataframe(trades_display)
+        else:
+            st.error(get_text("no_data", L))
 
 st.sidebar.markdown("---")
 st.sidebar.write(get_text("system_status", L))
