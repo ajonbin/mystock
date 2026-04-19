@@ -151,6 +151,13 @@ else:
                 st.write(get_text("recent_trades", L))
                 trades_display = res.trades.copy()
                 if not trades_display.empty:
+                    # Format numeric columns
+                    trades_display['price'] = trades_display['price'].map('{:.2f}'.format)
+                    trades_display['amount'] = trades_display['amount'].map('{:.2f}'.format)
+                    trades_display['cash_left'] = trades_display['cash_left'].map('{:.2f}'.format)
+                    trades_display['total_value'] = trades_display['total_value'].map('{:.2f}'.format)
+                    trades_display['total_qty'] = trades_display['total_qty'].map('{:.0f}'.format)
+
                     # Format Quantity with +/-
                     trades_display['qty'] = trades_display.apply(
                         lambda row: f"+{row['qty']:.0f}" if row['action'] == 'BUY' else f"-{row['qty']:.0f}", axis=1
