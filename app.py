@@ -33,6 +33,14 @@ period = period_options[selected_period_text]
 
 interval = st.sidebar.selectbox(get_text("interval_label", L), ["1d", "60m", "15m", "5m"], index=0)
 
+adjust_options = {
+    get_text("adjust_qfq", L): "qfq",
+    get_text("adjust_hfq", L): "hfq",
+    get_text("adjust_none", L): ""
+}
+selected_adjust_text = st.sidebar.selectbox(get_text("adjust_label", L), list(adjust_options.keys()))
+adjust = adjust_options[selected_adjust_text]
+
 st.sidebar.subheader(get_text("params_header", L))
 ema_long = st.sidebar.slider(get_text("ema_long", L), 30, 200, 60)
 ema_mid = st.sidebar.slider(get_text("ema_mid", L), 5, 50, 20)
@@ -46,7 +54,7 @@ strategy = GridTStrategy(ema_long=ema_long, ema_mid=ema_mid, rsi_low=rsi_low, rs
 
 # Fetch Data
 with st.spinner(get_text("fetching_data", L)):
-    df = client.get_history(symbol, period=period, interval=interval)
+    df = client.get_history(symbol, period=period, interval=interval, adjust=adjust)
     if not df.empty:
         df = strategy.compute_indicators(df)
 

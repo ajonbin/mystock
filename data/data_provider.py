@@ -13,7 +13,7 @@ class StockDataClient:
     def __init__(self):
         self.storage = StockStorage()
 
-    def get_history(self, symbol: str, period: str = "daily", interval: str = "1d", start_date: str = None, end_date: str = None, adjust: str = "hfq") -> pd.DataFrame:
+    def get_history(self, symbol: str, period: str = "daily", interval: str = "1d", start_date: str = None, end_date: str = None, adjust: str = "qfq") -> pd.DataFrame:
         """
         Fetch historical K-line data with local caching.
         """
