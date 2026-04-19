@@ -129,14 +129,22 @@ else:
                 res = tester.run(bt_df, strategy)
                 
                 # Display Metrics
+                st.write("---")
                 m_col1, m_col2, m_col3, m_col4, m_col5 = st.columns(5)
                 m_col1.metric(get_text("total_return", L), res.metrics['Total Return'])
                 m_col2.metric(get_text("buy_hold_return", L), res.metrics['Buy & Hold Return'])
                 m_col3.metric(get_text("max_drawdown", L), res.metrics['Max Drawdown'])
                 m_col4.metric(get_text("trade_count", L), res.metrics['Trade Count'])
                 m_col5.metric(get_text("final_value", L), res.metrics['Final Value'])
-                
+
+                # Breakdown Row
+                b_col1, b_col2, b_col3, b_col4 = st.columns(4)
+                b_col1.metric(get_text("metric_cash", L), res.metrics['Cash'])
+                b_col2.metric(get_text("metric_core", L), res.metrics['Core Value'])
+                b_col3.metric(get_text("metric_trading", L), res.metrics['Trading Value'])
+
                 # Equity Curve
+
                 fig_equity = go.Figure()
                 fig_equity.add_trace(go.Scatter(x=res.equity_curve.index, y=res.equity_curve, name=get_text("equity_growth", L)))
                 fig_equity.update_layout(title=get_text("equity_growth", L), height=400)
@@ -154,6 +162,7 @@ else:
                         'action': get_text("col_action", L),
                         'price': get_text("col_price", L),
                         'qty': get_text("col_qty", L),
+                        'total_qty': get_text("col_total_qty", L),
                         'amount': get_text("col_amount", L),
                         'cash_left': get_text("col_cash_left", L)
                     }
