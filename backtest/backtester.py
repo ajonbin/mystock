@@ -43,16 +43,20 @@ class Backtester:
         # Initial core position (buy at first day)
         first_price = df.iloc[0]['close']
         core_cash = self.initial_cash * self.core_ratio
-        core_pos = core_cash / first_price
-        cash -= core_cash
-        trades.append({
-            'date': df.index[0], 
-            'action': 'BUY', 
-            'price': first_price, 
-            'qty': core_pos,
-            'amount': core_cash,
-            'cash_left': cash
-        })
+        core_qty = (core_cash // (first_price * 100)) * 100
+        
+        if core_qty > 0:
+            core_pos = core_qty
+            actual_core_cash = core_qty * first_price
+            cash -= actual_core_cash
+            trades.append({
+                'date': df.index[0], 
+                'action': 'BUY', 
+                'price': first_price, 
+                'qty': core_pos,
+                'amount': actual_core_cash,
+                'cash_left': cash
+            })
         
         # Trading Loop
         for i in range(len(df)):
@@ -73,18 +77,22 @@ class Backtester:
             # Execute Trading Portion
             if signal == 'BUY' and cash > 0:
                 # Buy trading position using half of remaining cash
-                buy_amt = cash * 0.5
-                buy_qty = buy_amt / price
-                trading_pos += buy_qty
-                cash -= buy_amt
-                trades.append({
-                    'date': df.index[i], 
-                    'action': 'BUY', 
-                    'price': price, 
-                    'qty': buy_qty,
-                    'amount': buy_amt,
-                    'cash_left': cash
-                })
+                buy_amt_limit = cash * 0.5
+                # Enforce lot size: n*100, min 100
+                buy_qty = (buy_amt_limit // (price * 100)) * 100
+                
+                if buy_qty >= 100:
+                    trading_pos += buy_qty
+                    actual_buy_amt = buy_qty * price
+                    cash -= actual_buy_amt
+                    trades.append({
+                        'date': df.index[i], 
+                        'action': 'BUY', 
+                        'price': price, 
+                        'qty': buy_qty,
+                        'amount': actual_buy_amt,
+                        'cash_left': cash
+                    })
             elif signal == 'SELL' and trading_pos > 0:
                 # Sell all trading position
                 sell_amt = trading_pos * price
