@@ -1,12 +1,20 @@
 # Quantitative Stock T+0 System (做T工具)
 
-A quantitative trading system designed for single-stock intraday trading (做T), featuring mean-reversion strategy, backtesting, and a real-time dashboard.
+A quantitative trading system designed for single-stock intraday/swing trading (做T), featuring mean-reversion strategies, incremental data caching, and an interactive dashboard.
 
 ## Features
-- **Data Layer**: Fetches data from AkShare (A-shares) and yfinance (US/Global).
-- **Strategy Layer**: Implements EMA, RSI, ATR, and Bollinger Bands with custom signals.
-- **Backtest Engine**: Simulates "Core + Trading" position management.
-- **Interactive UI**: Built with Streamlit for easy parameter tuning and visualization.
+- **Multi-Source Data**: Fetches historical and real-time data from **AkShare** (A-shares) and **yfinance** (US/Global).
+- **Incremental Caching**: Uses a local **SQLite** database to store historical data, fetching only missing increments from the network to ensure fast startup.
+- **Dual Strategy Modes**:
+    - **Standard**: Strict conditions (AND logic) for conservative trading.
+    - **Aggressive**: Looser conditions (OR logic) to maintain activity during trends.
+- **Realistic Backtesting**: 
+    - Simulates "Core + Trading" position management.
+    - Enforces **100-share lot size** and minimum trade units.
+    - Strictly **cash-limited** buying power simulation.
+    - Support for custom start dates.
+- **Multilingual Support**: Full UI support for **Simplified Chinese** (default) and **English**.
+- **Unified Price Adjustment**: User-selectable price adjustment (QFQ/HFQ/None) applied consistently across charts and backtests.
 
 ## Quick Start
 
@@ -21,13 +29,22 @@ A quantitative trading system designed for single-stock intraday trading (做T),
    ```
 
 ## Project Structure
-- `app.py`: Main Streamlit application.
-- `data/`: Data retrieval logic.
-- `strategy/`: Strategy implementation and technical indicators.
-- `backtest/`: Performance evaluation and trade simulation.
-- `utils/`: Common utilities.
+- `app.py`: Main Streamlit application and UI logic.
+- `data/`: 
+    - `data_provider.py`: Logic for fetching data from network APIs.
+    - `storage.py`: SQLite-based local caching layer.
+- `strategy/`: 
+    - `strategy.py`: Technical indicator calculation (via `pandas_ta`) and signal generation.
+- `backtest/`: 
+    - `backtester.py`: Loop-based trade simulation and performance metrics.
+- `utils/`: 
+    - `i18n.py`: Internationalization support.
 
 ## Strategy Logic
-- **Buy (T+ In)**: Price < Bollinger Lower Band AND RSI < 30.
-- **Sell (T+ Out)**: Price > Bollinger Upper Band AND RSI > 70.
-- **Risk Control**: Trend filtering using EMA60.
+- **Standard Mode**:
+    - **Buy**: Price < Bollinger Lower Band **AND** RSI < Oversold Threshold.
+    - **Sell**: Price > Bollinger Upper Band **AND** RSI > Overbought Threshold.
+- **Aggressive Mode**:
+    - **Buy**: Price < Bollinger Lower Band **OR** (Price < EMA20 **AND** RSI < Oversold+5).
+    - **Sell**: Price > Bollinger Upper Band **OR** (Price > EMA20 **AND** RSI > Overbought-5).
+- **Risk Control**: Long-term trend filtering using EMA60.
