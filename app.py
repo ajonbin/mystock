@@ -99,11 +99,12 @@ else:
         res = tester.run(df, strategy)
         
         # Display Metrics
-        m_col1, m_col2, m_col3, m_col4 = st.columns(4)
+        m_col1, m_col2, m_col3, m_col4, m_col5 = st.columns(5)
         m_col1.metric(get_text("total_return", L), res.metrics['Total Return'])
         m_col2.metric(get_text("buy_hold_return", L), res.metrics['Buy & Hold Return'])
         m_col3.metric(get_text("max_drawdown", L), res.metrics['Max Drawdown'])
         m_col4.metric(get_text("trade_count", L), res.metrics['Trade Count'])
+        m_col5.metric(get_text("final_value", L), res.metrics['Final Value'])
         
         # Equity Curve
         fig_equity = go.Figure()
@@ -117,7 +118,7 @@ else:
         trades_display = res.trades.copy()
         if not trades_display.empty:
             trades_display['action'] = trades_display['action'].apply(lambda x: get_text(x, L))
-        st.dataframe(trades_display.tail(10))
+        st.dataframe(trades_display)
 
 st.sidebar.markdown("---")
 st.sidebar.write(get_text("system_status", L))
