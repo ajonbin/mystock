@@ -80,7 +80,7 @@ class Backtester:
             row = sim_df.iloc[i]
             price = row['close']
             
-            # Current total value (for position sizing)
+            # Current total value
             current_total_value = cash + (core_pos + trading_pos) * price
 
             # Skip invalid prices (can happen with QFQ on old data)
@@ -89,24 +89,26 @@ class Backtester:
                 continue
 
             signal = 'HOLD'
-            if (row['close'] < row['bb_lower']) or (row['close'] < row['ema_mid'] and row['rsi'] < strategy.rsi_low + 5):
-                signal = 'BUY'
-            elif (row['close'] > row['bb_upper']) or (row['close'] > row['ema_mid'] and row['rsi'] > strategy.rsi_high - 5):
-                signal = 'SELL'
+            if strategy.mode == "aggressive":
+                if (row['close'] < row['bb_lower']) or (row['close'] < row['ema_mid'] and row['rsi'] < strategy.rsi_low + 5):
+                    signal = 'BUY'
+                elif (row['close'] > row['bb_upper']) or (row['close'] > row['ema_mid'] and row['rsi'] > strategy.rsi_high - 5):
+                    signal = 'SELL'
+            else:
+                if row['close'] < row['bb_lower'] and row['rsi'] < strategy.rsi_low:
+                    signal = 'BUY'
+                elif row['close'] > row['bb_upper'] and row['rsi'] > strategy.rsi_high:
+                    signal = 'SELL'
             
             # Execute Trading Portion
             if signal == 'BUY' and cash > 0:
-                # Buy trading position using a percentage of total equity
-                # Aim to use ~20% of total current value for each trade if possible
-                target_buy_amt = current_total_value * 0.2
+                # Buy trading position using half of remaining cash (Reality based)
+                buy_amt_limit = cash * 0.5
                 
-                # If 20% is not enough for 100 shares, allow using more of available cash (up to 90%)
-                if target_buy_amt < price * 100:
-                    target_buy_amt = cash * 0.9
+                # Ensure we use at least enough for 100 shares if we have it
+                if buy_amt_limit < price * 100 and cash >= price * 100:
+                    buy_amt_limit = min(price * 100, cash * 0.9)
 
-                # But don't exceed current cash
-                buy_amt_limit = min(target_buy_amt, cash)
-                
                 # Enforce lot size: n*100, min 100
                 buy_qty = (buy_amt_limit // (price * 100)) * 100
                 

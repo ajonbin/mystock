@@ -49,9 +49,16 @@ rsi_low = st.sidebar.slider(get_text("rsi_low", L), 10, 40, 30)
 rsi_high = st.sidebar.slider(get_text("rsi_high", L), 60, 90, 70)
 bb_std = st.sidebar.slider(get_text("bb_std", L), 1.0, 3.0, 2.0, 0.1)
 
+mode_options = {
+    get_text("mode_standard", L): "standard",
+    get_text("mode_aggressive", L): "aggressive"
+}
+selected_mode_text = st.sidebar.selectbox(get_text("strategy_mode", L), list(mode_options.keys()))
+strategy_mode = mode_options[selected_mode_text]
+
 # Initialize Client
 client = StockDataClient()
-strategy = GridTStrategy(ema_long=ema_long, ema_mid=ema_mid, rsi_low=rsi_low, rsi_high=rsi_high, bb_std=bb_std)
+strategy = GridTStrategy(ema_long=ema_long, ema_mid=ema_mid, rsi_low=rsi_low, rsi_high=rsi_high, bb_std=bb_std, mode=strategy_mode)
 
 # Fetch Data
 with st.spinner(get_text("fetching_data", L)):
