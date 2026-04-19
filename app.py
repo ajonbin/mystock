@@ -128,64 +128,67 @@ else:
                 tester = Backtester()
                 res = tester.run(bt_df, strategy)
                 
-                # Display Metrics
-                st.write("---")
-                m_col1, m_col2, m_col3, m_col4, m_col5 = st.columns(5)
-                m_col1.metric(get_text("total_return", L), res.metrics['Total Return'])
-                m_col2.metric(get_text("buy_hold_return", L), res.metrics['Buy & Hold Return'])
-                m_col3.metric(get_text("max_drawdown", L), res.metrics['Max Drawdown'])
-                m_col4.metric(get_text("trade_count", L), res.metrics['Trade Count'])
-                m_col5.metric(get_text("final_value", L), res.metrics['Final Value'])
+                if res.trades.empty:
+                    st.warning(get_text("insufficient_capital", L))
+                else:
+                    # Display Metrics
+                    st.write("---")
+                    m_col1, m_col2, m_col3, m_col4, m_col5 = st.columns(5)
+                    m_col1.metric(get_text("total_return", L), res.metrics['Total Return'])
+                    m_col2.metric(get_text("buy_hold_return", L), res.metrics['Buy & Hold Return'])
+                    m_col3.metric(get_text("max_drawdown", L), res.metrics['Max Drawdown'])
+                    m_col4.metric(get_text("trade_count", L), res.metrics['Trade Count'])
+                    m_col5.metric(get_text("final_value", L), res.metrics['Final Value'])
 
-                # Breakdown Row
-                b_col1, b_col2, b_col3, b_col4 = st.columns(4)
-                b_col1.metric(get_text("metric_cash", L), res.metrics['Cash'])
-                b_col2.metric(get_text("metric_core", L), res.metrics['Core Value'])
-                b_col3.metric(get_text("metric_trading", L), res.metrics['Trading Value'])
+                    # Breakdown Row
+                    b_col1, b_col2, b_col3, b_col4 = st.columns(4)
+                    b_col1.metric(get_text("metric_cash", L), res.metrics['Cash'])
+                    b_col2.metric(get_text("metric_core", L), res.metrics['Core Value'])
+                    b_col3.metric(get_text("metric_trading", L), res.metrics['Trading Value'])
 
-                # Equity Curve
+                    # Equity Curve
+                    fig_equity = go.Figure()
+                    fig_equity.add_trace(go.Scatter(x=res.equity_curve.index, y=res.equity_curve, name=get_text("equity_growth", L)))
+                    fig_equity.update_layout(title=get_text("equity_growth", L), height=400)
+                    st.plotly_chart(fig_equity, use_container_width=True)
 
-                fig_equity = go.Figure()
-                fig_equity.add_trace(go.Scatter(x=res.equity_curve.index, y=res.equity_curve, name=get_text("equity_growth", L)))
-                fig_equity.update_layout(title=get_text("equity_growth", L), height=400)
-                st.plotly_chart(fig_equity, use_container_width=True)
-                
-                # Trade Log
-                st.write(get_text("recent_trades", L))
-                trades_display = res.trades.copy()
-                if not trades_display.empty:
-                    # Format Quantity with +/-
-                    trades_display['qty'] = trades_display.apply(
-                        lambda row: f"+{row['qty']:.0f}" if row['action'] == 'BUY' else f"-{row['qty']:.0f}", axis=1
-                    )
-                    
-                    # Localize actions
-                    trades_display['action'] = trades_display['action'].apply(lambda x: get_text(x, L))
-                    
-                    # Localize column headers
-                    column_mapping = {
-                        'date': get_text("col_date", L),
-                        'action': get_text("col_action", L),
-                        'price': get_text("col_price", L),
-                        'qty': get_text("col_qty", L),
-                        'total_qty': get_text("col_total_qty", L),
-                        'total_value': get_text("col_total_value", L),
-                        'amount': get_text("col_amount", L),
-                        'cash_left': get_text("col_cash_left", L)
-                    }
-                    trades_display = trades_display.rename(columns=column_mapping)
+                    # Trade Log
+                    st.write(get_text("recent_trades", L))
+                    trades_display = res.trades.copy()
+                    if not trades_display.empty:
+                        # Format Quantity with +/-
+                        trades_display['qty'] = trades_display.apply(
+                            lambda row: f"+{row['qty']:.0f}" if row['action'] == 'BUY' else f"-{row['qty']:.0f}", axis=1
+                        )
 
-                    # Apply Coloring
-                    def color_rows(row):
-                        action_col = get_text("col_action", L)
-                        if row[action_col] == get_text("BUY", L):
-                            return ['background-color: rgba(255, 0, 0, 0.2)'] * len(row)
-                        elif row[action_col] == get_text("SELL", L):
-                            return ['background-color: rgba(0, 255, 0, 0.2)'] * len(row)
-                        return [''] * len(row)
-                    
-                    styled_trades = trades_display.style.apply(color_rows, axis=1)
-                    st.dataframe(styled_trades)
+                        # Localize actions
+                        trades_display['action'] = trades_display['action'].apply(lambda x: get_text(x, L))
+
+                        # Localize column headers
+                        column_mapping = {
+                            'date': get_text("col_date", L),
+                            'action': get_text("col_action", L),
+                            'price': get_text("col_price", L),
+                            'qty': get_text("col_qty", L),
+                            'total_qty': get_text("col_total_qty", L),
+                            'total_value': get_text("col_total_value", L),
+                            'amount': get_text("col_amount", L),
+                            'cash_left': get_text("col_cash_left", L)
+                        }
+                        trades_display = trades_display.rename(columns=column_mapping)
+
+                        # Apply Coloring
+                        def color_rows(row):
+                            action_col = get_text("col_action", L)
+                            if row[action_col] == get_text("BUY", L):
+                                return ['background-color: rgba(255, 0, 0, 0.2)'] * len(row)
+                            elif row[action_col] == get_text("SELL", L):
+                                return ['background-color: rgba(0, 255, 0, 0.2)'] * len(row)
+                            return [''] * len(row)
+
+                        styled_trades = trades_display.style.apply(color_rows, axis=1)
+                        st.dataframe(styled_trades)
+
         else:
             st.error(get_text("no_data", L))
 
