@@ -69,12 +69,26 @@ class Backtester:
                 buy_qty = buy_amt / price
                 trading_pos += buy_qty
                 cash -= buy_amt
-                trades.append({'date': df.index[i], 'action': 'BUY', 'price': price, 'qty': buy_qty})
+                trades.append({
+                    'date': df.index[i], 
+                    'action': 'BUY', 
+                    'price': price, 
+                    'qty': buy_qty,
+                    'amount': buy_amt,
+                    'cash_left': cash
+                })
             elif signal == 'SELL' and trading_pos > 0:
                 # Sell all trading position
                 sell_amt = trading_pos * price
                 cash += sell_amt
-                trades.append({'date': df.index[i], 'action': 'SELL', 'price': price, 'qty': trading_pos})
+                trades.append({
+                    'date': df.index[i], 
+                    'action': 'SELL', 
+                    'price': price, 
+                    'qty': trading_pos,
+                    'amount': sell_amt,
+                    'cash_left': cash
+                })
                 trading_pos = 0
                 
             total_value = cash + (core_pos + trading_pos) * price

@@ -102,6 +102,13 @@ else:
 
     # Backtest Section
     st.subheader(get_text("backtest_header", L))
+    
+    # Start Date Selection for Backtest
+    min_date = df.index.min().date()
+    max_date = df.index.max().date()
+    default_start = max(min_date, max_date - pd.Timedelta(days=365).date())
+    bt_start_date = st.date_input(get_text("backtest_start_date", L), value=default_start, min_value=min_date, max_value=max_date)
+
     if st.button(get_text("run_backtest", L)):
         # If current data is not HFQ, fetch HFQ data specifically for backtest
         if adjust != "hfq":
@@ -111,30 +118,46 @@ else:
             bt_df = df.copy()
             
         if not bt_df.empty:
-            tester = Backtester()
-            res = tester.run(bt_df, strategy)
+            # Filter by start date
+            bt_df = bt_df[bt_df.index.date >= bt_start_date]
             
-            # Display Metrics
-            m_col1, m_col2, m_col3, m_col4, m_col5 = st.columns(5)
-            m_col1.metric(get_text("total_return", L), res.metrics['Total Return'])
-            m_col2.metric(get_text("buy_hold_return", L), res.metrics['Buy & Hold Return'])
-            m_col3.metric(get_text("max_drawdown", L), res.metrics['Max Drawdown'])
-            m_col4.metric(get_text("trade_count", L), res.metrics['Trade Count'])
-            m_col5.metric(get_text("final_value", L), res.metrics['Final Value'])
-            
-            # Equity Curve
-            fig_equity = go.Figure()
-            fig_equity.add_trace(go.Scatter(x=res.equity_curve.index, y=res.equity_curve, name=get_text("equity_growth", L)))
-            fig_equity.update_layout(title=get_text("equity_growth", L), height=400)
-            st.plotly_chart(fig_equity, use_container_width=True)
-            
-            # Trade Log
-            st.write(get_text("recent_trades", L))
-            # Optional: Localize actions in trades dataframe
-            trades_display = res.trades.copy()
-            if not trades_display.empty:
-                trades_display['action'] = trades_display['action'].apply(lambda x: get_text(x, L))
-            st.dataframe(trades_display)
+            if bt_df.empty:
+                st.error(get_text("no_data", L))
+            else:
+                tester = Backtester()
+                res = tester.run(bt_df, strategy)
+                
+                # Display Metrics
+                m_col1, m_col2, m_col3, m_col4, m_col5 = st.columns(5)
+                m_col1.metric(get_text("total_return", L), res.metrics['Total Return'])
+                m_col2.metric(get_text("buy_hold_return", L), res.metrics['Buy & Hold Return'])
+                m_col3.metric(get_text("max_drawdown", L), res.metrics['Max Drawdown'])
+                m_col4.metric(get_text("trade_count", L), res.metrics['Trade Count'])
+                m_col5.metric(get_text("final_value", L), res.metrics['Final Value'])
+                
+                # Equity Curve
+                fig_equity = go.Figure()
+                fig_equity.add_trace(go.Scatter(x=res.equity_curve.index, y=res.equity_curve, name=get_text("equity_growth", L)))
+                fig_equity.update_layout(title=get_text("equity_growth", L), height=400)
+                st.plotly_chart(fig_equity, use_container_width=True)
+                
+                # Trade Log
+                st.write(get_text("recent_trades", L))
+                trades_display = res.trades.copy()
+                if not trades_display.empty:
+                    # Localize actions
+                    trades_display['action'] = trades_display['action'].apply(lambda x: get_text(x, L))
+                    # Localize column headers
+                    column_mapping = {
+                        'date': get_text("col_date", L),
+                        'action': get_text("col_action", L),
+                        'price': get_text("col_price", L),
+                        'qty': get_text("col_qty", L),
+                        'amount': get_text("col_amount", L),
+                        'cash_left': get_text("col_cash_left", L)
+                    }
+                    trades_display = trades_display.rename(columns=column_mapping)
+                st.dataframe(trades_display)
         else:
             st.error(get_text("no_data", L))
 
