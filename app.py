@@ -23,42 +23,54 @@ lang_choice = st.sidebar.radio("Language / 语言", ["中文", "English"],
 st.session_state.lang = 'zh' if lang_choice == "中文" else 'en'
 L = st.session_state.lang
 
-symbol = st.sidebar.text_input(get_text("symbol_label", L), "600036")
+# Persist all inputs using 'key'
+symbol = st.sidebar.text_input(get_text("symbol_label", L), value="600036", key="symbol")
 
-period_options = {
-    get_text("daily", L): "daily",
-    get_text("weekly", L): "weekly"
-}
-selected_period_text = st.sidebar.selectbox(get_text("period_label", L), list(period_options.keys()))
-period = period_options[selected_period_text]
+period = st.sidebar.selectbox(
+    get_text("period_label", L), 
+    options=["daily", "weekly"], 
+    format_func=lambda x: get_text(x, L),
+    key="period"
+)
 
-interval = st.sidebar.selectbox(get_text("interval_label", L), ["1d", "60m", "15m", "5m"], index=0)
+interval = st.sidebar.selectbox(
+    get_text("interval_label", L), 
+    ["1d", "60m", "15m", "5m"], 
+    index=0,
+    key="interval"
+)
 
-adjust_options = {
-    get_text("adjust_qfq", L): "qfq",
-    get_text("adjust_hfq", L): "hfq",
-    get_text("adjust_none", L): ""
-}
-selected_adjust_text = st.sidebar.selectbox(get_text("adjust_label", L), list(adjust_options.keys()))
-adjust = adjust_options[selected_adjust_text]
+adjust = st.sidebar.selectbox(
+    get_text("adjust_label", L),
+    options=["qfq", "hfq", ""],
+    format_func=lambda x: get_text(f"adjust_{x}" if x else "adjust_none", L),
+    key="adjust"
+)
 
 st.sidebar.subheader(get_text("params_header", L))
-ema_long = st.sidebar.slider(get_text("ema_long", L), 30, 200, 60)
-ema_mid = st.sidebar.slider(get_text("ema_mid", L), 5, 50, 20)
-rsi_low = st.sidebar.slider(get_text("rsi_low", L), 10, 40, 30)
-rsi_high = st.sidebar.slider(get_text("rsi_high", L), 60, 90, 70)
-bb_std = st.sidebar.slider(get_text("bb_std", L), 1.0, 3.0, 2.0, 0.1)
+ema_long = st.sidebar.slider(get_text("ema_long", L), 30, 200, 60, key="ema_long")
+ema_mid = st.sidebar.slider(get_text("ema_mid", L), 5, 50, 20, key="ema_mid")
+rsi_low = st.sidebar.slider(get_text("rsi_low", L), 10, 40, 30, key="rsi_low")
+rsi_high = st.sidebar.slider(get_text("rsi_high", L), 60, 90, 70, key="rsi_high")
+bb_std = st.sidebar.slider(get_text("bb_std", L), 1.0, 3.0, 2.0, 0.1, key="bb_std")
 
-mode_options = {
-    get_text("mode_standard", L): "standard",
-    get_text("mode_aggressive", L): "aggressive"
-}
-selected_mode_text = st.sidebar.selectbox(get_text("strategy_mode", L), list(mode_options.keys()))
-strategy_mode = mode_options[selected_mode_text]
+strategy_mode = st.sidebar.selectbox(
+    get_text("strategy_mode", L),
+    options=["standard", "aggressive"],
+    format_func=lambda x: get_text(f"mode_{x}", L),
+    key="strategy_mode"
+)
 
 # Initialize Client
 client = StockDataClient()
-strategy = GridTStrategy(ema_long=ema_long, ema_mid=ema_mid, rsi_low=rsi_low, rsi_high=rsi_high, bb_std=bb_std, mode=strategy_mode)
+strategy = GridTStrategy(
+    ema_long=ema_long, 
+    ema_mid=ema_mid, 
+    rsi_low=rsi_low, 
+    rsi_high=rsi_high, 
+    bb_std=bb_std, 
+    mode=strategy_mode
+)
 
 # Fetch Data
 with st.spinner(get_text("fetching_data", L)):
@@ -73,22 +85,24 @@ if df.empty:
     st.error(get_text("no_data", L))
 else:
     # Real-time Signal Section
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns([1, 2])
     latest_close = df['close'].iloc[-1]
     signal = strategy.check_signals(df)
     
-    col1.metric(get_text("current_price", L), f"{latest_close:.2f}")
+    with col1:
+        m1, m2 = st.columns(2)
+        m1.metric(get_text("current_price", L), f"{latest_close:.2f}")
+        action_text = get_text(signal.action, L)
+        m2.metric(get_text("signal", L), action_text)
     
-    # Translate signal action and reason
-    action_text = get_text(signal.action, L)
-    reason_text = signal.reason
-    if L == 'zh':
-        reason_text = reason_text.replace("Price", "价格").replace("BB Lower", "布林带下轨").replace("BB Upper", "布林带上轨")
-        if "Insufficient data" in reason_text:
+    with col2:
+        # Translate signal reason
+        reason_text = signal.reason
+        if L == 'zh' and "Insufficient data" in reason_text:
             reason_text = get_text("insufficient_data", L)
-            
-    col2.metric(get_text("signal", L), action_text)
-    col3.metric(get_text("signal_reason", L), reason_text)
+        
+        st.markdown(f"**{get_text('signal_reason', L)}**")
+        st.info(reason_text)
 
     # Visualization
     st.subheader(get_text("interactive_chart", L))
@@ -115,7 +129,7 @@ else:
     min_date = df.index.min().date()
     max_date = df.index.max().date()
     default_start = max(min_date, date(2000, 1, 1))
-    bt_start_date = st.date_input(get_text("backtest_start_date", L), value=default_start, min_value=min_date, max_value=max_date)
+    bt_start_date = st.date_input(get_text("backtest_start_date", L), value=default_start, min_value=min_date, max_value=max_date, key="bt_start_date")
 
     if st.button(get_text("run_backtest", L)):
         # Use the user-selected 'adjust' setting for the backtest

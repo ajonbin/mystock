@@ -82,21 +82,21 @@ class GridTStrategy:
             # Aggressive Mode: OR condition, looser thresholds
             # Buy Signal (T+ In): Price < BB Lower OR (Price < EMA20 AND RSI < 35)
             if (close < latest['bb_lower']) or (close < latest['ema_mid'] and latest['rsi'] < self.rsi_low + 5):
-                reason = f"Aggressive: Price ({close:.2f}) < BB Lower ({latest['bb_lower']:.2f}) or Oversold"
+                reason = f"Agg: close({close:.2f}) < BBL({latest['bb_lower']:.2f}) or RSI({latest['rsi']:.1f}) < {self.rsi_low+5:.0f}"
                 return TradingSignal('BUY', close, reason)
                 
             # Sell Signal (T+ Out): Price > BB Upper OR (Price > EMA20 AND RSI > 65)
             if (close > latest['bb_upper']) or (close > latest['ema_mid'] and latest['rsi'] > self.rsi_high - 5):
-                reason = f"Aggressive: Price ({close:.2f}) > BB Upper ({latest['bb_upper']:.2f}) or Overbought"
+                reason = f"Agg: close({close:.2f}) > BBU({latest['bb_upper']:.2f}) or RSI({latest['rsi']:.1f}) > {self.rsi_high-5:.0f}"
                 return TradingSignal('SELL', close, reason)
         else:
             # Standard Mode: Strict AND condition
             if close < latest['bb_lower'] and latest['rsi'] < self.rsi_low:
-                reason = f"Standard: Price ({close:.2f}) < BB Lower ({latest['bb_lower']:.2f}) AND RSI ({latest['rsi']:.1f}) < {self.rsi_low}"
+                reason = f"Std: close({close:.2f}) < BBL({latest['bb_lower']:.2f}) & RSI({latest['rsi']:.1f}) < {self.rsi_low:.0f}"
                 return TradingSignal('BUY', close, reason)
                 
             if close > latest['bb_upper'] and latest['rsi'] > self.rsi_high:
-                reason = f"Standard: Price ({close:.2f}) > BB Upper ({latest['bb_upper']:.2f}) AND RSI ({latest['rsi']:.1f}) > {self.rsi_high}"
+                reason = f"Std: close({close:.2f}) > BBU({latest['bb_upper']:.2f}) & RSI({latest['rsi']:.1f}) > {self.rsi_high:.0f}"
                 return TradingSignal('SELL', close, reason)
             
         return TradingSignal('HOLD', close, "Neutral conditions")
