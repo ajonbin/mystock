@@ -73,22 +73,24 @@ if df.empty:
     st.error(get_text("no_data", L))
 else:
     # Real-time Signal Section
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns([1, 2])
     latest_close = df['close'].iloc[-1]
     signal = strategy.check_signals(df)
     
-    col1.metric(get_text("current_price", L), f"{latest_close:.2f}")
+    with col1:
+        m1, m2 = st.columns(2)
+        m1.metric(get_text("current_price", L), f"{latest_close:.2f}")
+        action_text = get_text(signal.action, L)
+        m2.metric(get_text("signal", L), action_text)
     
-    # Translate signal action and reason
-    action_text = get_text(signal.action, L)
-    reason_text = signal.reason
-    if L == 'zh':
-        reason_text = reason_text.replace("Price", "价格").replace("BB Lower", "布林带下轨").replace("BB Upper", "布林带上轨")
-        if "Insufficient data" in reason_text:
+    with col2:
+        # Translate signal reason
+        reason_text = signal.reason
+        if L == 'zh' and "Insufficient data" in reason_text:
             reason_text = get_text("insufficient_data", L)
-            
-    col2.metric(get_text("signal", L), action_text)
-    col3.metric(get_text("signal_reason", L), reason_text)
+        
+        st.markdown(f"**{get_text('signal_reason', L)}**")
+        st.info(reason_text)
 
     # Visualization
     st.subheader(get_text("interactive_chart", L))
