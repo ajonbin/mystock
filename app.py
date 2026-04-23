@@ -19,10 +19,14 @@ def load_settings():
     if os.path.exists(SETTINGS_FILE):
         try:
             with open(SETTINGS_FILE, "r") as f:
-                return json.load(f)
+                settings = json.load(f)
+                # Migration from single symbol to history
+                if "symbol" in settings and "symbols_history" not in settings:
+                    settings["symbols_history"] = [settings["symbol"]]
+                return settings
         except Exception:
             pass
-    return {"symbol": "600036"}
+    return {"symbols_history": ["600036"]}
 
 def save_settings(settings):
     try:
@@ -32,6 +36,7 @@ def save_settings(settings):
         pass
 
 settings = load_settings()
+history = settings.get("symbols_history", ["600036"])
 
 # Language Selection
 if 'lang' not in st.session_state:
@@ -49,13 +54,23 @@ L = st.session_state.lang
 # Persist all inputs using 'key'
 # Initialize symbol in session state if not present
 if 'symbol' not in st.session_state:
-    st.session_state.symbol = settings.get("symbol", "600036")
+    st.session_state.symbol = history[0] if history else "600036"
 
-symbol = st.sidebar.text_input(get_text("symbol_label", L), key="symbol")
+symbol = st.sidebar.selectbox(
+    get_text("symbol_label", L),
+    options=history,
+    index=0 if history else None,
+    key="symbol",
+    accept_new_options=True
+)
 
-# Save symbol if it changed
-if st.session_state.symbol != settings.get("symbol"):
-    settings["symbol"] = st.session_state.symbol
+# Update history if symbol is new or not at the front
+if symbol and (not history or history[0] != symbol):
+    if symbol in history:
+        history.remove(symbol)
+    history.insert(0, symbol)
+    history = history[:10]  # Keep max 10
+    settings["symbols_history"] = history
     save_settings(settings)
 
 period = st.sidebar.selectbox(
