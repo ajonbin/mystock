@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import json
+import os
 from datetime import timedelta, date
 from data.data_provider import StockDataClient
 from strategy.strategy import GridTStrategy
@@ -9,6 +11,27 @@ from utils.i18n import get_text
 
 # Configuration
 st.set_page_config(page_title="Quantitative Stock T+0 Dashboard", layout="wide")
+
+# Settings Persistence
+SETTINGS_FILE = ".stock_settings.json"
+
+def load_settings():
+    if os.path.exists(SETTINGS_FILE):
+        try:
+            with open(SETTINGS_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {"symbol": "600036"}
+
+def save_settings(settings):
+    try:
+        with open(SETTINGS_FILE, "w") as f:
+            json.dump(settings, f)
+    except Exception:
+        pass
+
+settings = load_settings()
 
 # Language Selection
 if 'lang' not in st.session_state:
@@ -24,7 +47,16 @@ st.session_state.lang = 'zh' if lang_choice == "中文" else 'en'
 L = st.session_state.lang
 
 # Persist all inputs using 'key'
-symbol = st.sidebar.text_input(get_text("symbol_label", L), value="600036", key="symbol")
+# Initialize symbol in session state if not present
+if 'symbol' not in st.session_state:
+    st.session_state.symbol = settings.get("symbol", "600036")
+
+symbol = st.sidebar.text_input(get_text("symbol_label", L), key="symbol")
+
+# Save symbol if it changed
+if st.session_state.symbol != settings.get("symbol"):
+    settings["symbol"] = st.session_state.symbol
+    save_settings(settings)
 
 period = st.sidebar.selectbox(
     get_text("period_label", L), 
@@ -42,10 +74,19 @@ interval = st.sidebar.selectbox(
 
 adjust = st.sidebar.selectbox(
     get_text("adjust_label", L),
-    options=["qfq", "hfq", ""],
+    options=["qfq", "hfq", None],
     format_func=lambda x: get_text(f"adjust_{x}" if x else "adjust_none", L),
     key="adjust"
 )
+
+display_range = st.sidebar.selectbox(
+    get_text("display_range_label", L),
+    options=["3m", "6m", "1y", "all"],
+    index=0,
+    format_func=lambda x: get_text(x, L),
+    key="display_range"
+)
+
 
 st.sidebar.subheader(get_text("params_header", L))
 ema_long = st.sidebar.slider(get_text("ema_long", L), 30, 200, 60, key="ema_long")
@@ -106,18 +147,37 @@ else:
 
     # Visualization
     st.subheader(get_text("interactive_chart", L))
+    
+    # Filter for display based on selection
+    if display_range == "3m":
+        delta = timedelta(days=90)
+    elif display_range == "6m":
+        delta = timedelta(days=180)
+    elif display_range == "1y":
+        delta = timedelta(days=365)
+    else: # "all"
+        delta = None
+        
+    if delta:
+        display_start = date.today() - delta
+        df_display = df[df.index.date >= display_start]
+        if df_display.empty:
+            df_display = df.tail(60)
+    else:
+        df_display = df
+
     fig = go.Figure()
     
     # Candlestick
-    fig.add_trace(go.Candlestick(x=df.index,
-                    open=df['open'], high=df['high'],
-                    low=df['low'], close=df['close'], name=get_text("market_data", L)))
+    fig.add_trace(go.Candlestick(x=df_display.index,
+                    open=df_display['open'], high=df_display['high'],
+                    low=df_display['low'], close=df_display['close'], name=get_text("market_data", L)))
     
     # Indicators
-    fig.add_trace(go.Scatter(x=df.index, y=df['ema_long'], name=get_text("ema_long", L), line=dict(color='orange')))
-    fig.add_trace(go.Scatter(x=df.index, y=df['ema_mid'], name=get_text("ema_mid", L), line=dict(color='blue')))
-    fig.add_trace(go.Scatter(x=df.index, y=df['bb_upper'], name=f"{get_text('bb_std', L)} Upper", line=dict(dash='dash', color='gray')))
-    fig.add_trace(go.Scatter(x=df.index, y=df['bb_lower'], name=f"{get_text('bb_std', L)} Lower", line=dict(dash='dash', color='gray')))
+    fig.add_trace(go.Scatter(x=df_display.index, y=df_display['ema_long'], name=get_text("ema_long", L), line=dict(color='orange')))
+    fig.add_trace(go.Scatter(x=df_display.index, y=df_display['ema_mid'], name=get_text("ema_mid", L), line=dict(color='blue')))
+    fig.add_trace(go.Scatter(x=df_display.index, y=df_display['bb_upper'], name=f"{get_text('bb_std', L)} Upper", line=dict(dash='dash', color='gray')))
+    fig.add_trace(go.Scatter(x=df_display.index, y=df_display['bb_lower'], name=f"{get_text('bb_std', L)} Lower", line=dict(dash='dash', color='gray')))
     
     fig.update_layout(xaxis_rangeslider_visible=False, height=600)
     st.plotly_chart(fig, use_container_width=True)
@@ -128,7 +188,8 @@ else:
     # Start Date Selection for Backtest
     min_date = df.index.min().date()
     max_date = df.index.max().date()
-    default_start = max(min_date, date(2000, 1, 1))
+    # Default backtest to last 3 months
+    default_start = max(min_date, date.today() - timedelta(days=90))
     bt_start_date = st.date_input(get_text("backtest_start_date", L), value=default_start, min_value=min_date, max_value=max_date, key="bt_start_date")
 
     if st.button(get_text("run_backtest", L)):
