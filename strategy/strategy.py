@@ -74,32 +74,54 @@ class GridTStrategy:
 
         latest = df.iloc[-1]
         close = latest['close']
-        
-        # Trend Filter (EMA60)
-        is_uptrend = close > latest['ema_long']
-        
-        if self.mode == "aggressive":
-            # Aggressive Mode: OR condition, looser thresholds
-            # Buy Signal (T+ In): Price < BB Lower OR (Price < EMA20 AND RSI < 35)
-            if (close < latest['bb_lower']) or (close < latest['ema_mid'] and latest['rsi'] < self.rsi_low + 5):
-                reason = f"Agg: close({close:.2f}) < BBL({latest['bb_lower']:.2f}) or RSI({latest['rsi']:.1f}) < {self.rsi_low+5:.0f}"
-                return TradingSignal('BUY', close, reason)
-                
-            # Sell Signal (T+ Out): Price > BB Upper OR (Price > EMA20 AND RSI > 65)
-            if (close > latest['bb_upper']) or (close > latest['ema_mid'] and latest['rsi'] > self.rsi_high - 5):
-                reason = f"Agg: close({close:.2f}) > BBU({latest['bb_upper']:.2f}) or RSI({latest['rsi']:.1f}) > {self.rsi_high-5:.0f}"
-                return TradingSignal('SELL', close, reason)
+
+        # Standardize mode logic to avoid duplication
+        signals_df = self.generate_signals(df.tail(self.ema_long + 1))
+        if signals_df.empty:
+             return TradingSignal('HOLD', close, "Insufficient data")
+
+        latest_signal = signals_df.iloc[-1]
+        action = latest_signal['signal']
+
+        # Reconstruct reason for UI
+        if action == 'BUY':
+            if self.mode == "aggressive":
+                 reason = f"Agg: close({close:.2f}) < BBL({latest['bb_lower']:.2f}) or RSI({latest['rsi']:.1f}) < {self.rsi_low+5:.0f}"
+            else:
+                 reason = f"Std: close({close:.2f}) < BBL({latest['bb_lower']:.2f}) & RSI({latest['rsi']:.1f}) < {self.rsi_low:.0f}"
+        elif action == 'SELL':
+            if self.mode == "aggressive":
+                 reason = f"Agg: close({close:.2f}) > BBU({latest['bb_upper']:.2f}) or RSI({latest['rsi']:.1f}) > {self.rsi_high-5:.0f}"
+            else:
+                 reason = f"Std: close({close:.2f}) > BBU({latest['bb_upper']:.2f}) & RSI({latest['rsi']:.1f}) > {self.rsi_high:.0f}"
         else:
-            # Standard Mode: Strict AND condition
-            if close < latest['bb_lower'] and latest['rsi'] < self.rsi_low:
-                reason = f"Std: close({close:.2f}) < BBL({latest['bb_lower']:.2f}) & RSI({latest['rsi']:.1f}) < {self.rsi_low:.0f}"
-                return TradingSignal('BUY', close, reason)
-                
-            if close > latest['bb_upper'] and latest['rsi'] > self.rsi_high:
-                reason = f"Std: close({close:.2f}) > BBU({latest['bb_upper']:.2f}) & RSI({latest['rsi']:.1f}) > {self.rsi_high:.0f}"
-                return TradingSignal('SELL', close, reason)
-            
-        return TradingSignal('HOLD', close, "Neutral conditions")
+            reason = "Neutral conditions"
+
+        return TradingSignal(action, close, reason)
+
+    def generate_signals(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Vectorized or efficient signal generation for the entire dataframe.
+        Returns a dataframe with a 'signal' column ('BUY', 'SELL', 'HOLD').
+        """
+        if df.empty:
+            return df
+
+        df = df.copy()
+        df['signal'] = 'HOLD'
+
+        if self.mode == "aggressive":
+            buy_cond = (df['close'] < df['bb_lower']) | ((df['close'] < df['ema_mid']) & (df['rsi'] < self.rsi_low + 5))
+            sell_cond = (df['close'] > df['bb_upper']) | ((df['close'] > df['ema_mid']) & (df['rsi'] > self.rsi_high - 5))
+        else:
+            buy_cond = (df['close'] < df['bb_lower']) & (df['rsi'] < self.rsi_low)
+            sell_cond = (df['close'] > df['bb_upper']) & (df['rsi'] > self.rsi_high)
+
+        df.loc[buy_cond, 'signal'] = 'BUY'
+        df.loc[sell_cond, 'signal'] = 'SELL'
+
+        return df
+
 
 if __name__ == "__main__":
     from data.data_provider import StockDataClient

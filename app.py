@@ -133,6 +133,7 @@ with st.spinner(get_text("fetching_data", L)):
     df = client.get_history(symbol, period=period, interval=interval, adjust=adjust)
     if not df.empty:
         df = strategy.compute_indicators(df)
+        df = strategy.generate_signals(df)
 
 # Main Dashboard
 st.title(f"{get_text('title', L)}: {symbol}")
@@ -193,6 +194,28 @@ else:
     fig.add_trace(go.Scatter(x=df_display.index, y=df_display['ema_mid'], name=get_text("ema_mid", L), line=dict(color='blue')))
     fig.add_trace(go.Scatter(x=df_display.index, y=df_display['bb_upper'], name=f"{get_text('bb_std', L)} Upper", line=dict(dash='dash', color='gray')))
     fig.add_trace(go.Scatter(x=df_display.index, y=df_display['bb_lower'], name=f"{get_text('bb_std', L)} Lower", line=dict(dash='dash', color='gray')))
+    
+    # Signals
+    buys = df_display[df_display['signal'] == 'BUY']
+    sells = df_display[df_display['signal'] == 'SELL']
+    
+    if not buys.empty:
+        fig.add_trace(go.Scatter(
+            x=buys.index, 
+            y=buys['low'] * 0.98,
+            mode='markers',
+            name=get_text("BUY", L),
+            marker=dict(symbol='triangle-up', size=12, color='green', line=dict(width=1, color='DarkSlateGrey'))
+        ))
+        
+    if not sells.empty:
+        fig.add_trace(go.Scatter(
+            x=sells.index, 
+            y=sells['high'] * 1.02,
+            mode='markers',
+            name=get_text("SELL", L),
+            marker=dict(symbol='triangle-down', size=12, color='red', line=dict(width=1, color='DarkSlateGrey'))
+        ))
     
     fig.update_layout(xaxis_rangeslider_visible=False, height=600)
     st.plotly_chart(fig, use_container_width=True)

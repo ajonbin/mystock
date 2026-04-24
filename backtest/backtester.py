@@ -80,6 +80,8 @@ class Backtester:
             })
         
         # Trading Loop
+        signals_df = strategy.generate_signals(sim_df)
+        
         for i in range(len(sim_df)):
             row = sim_df.iloc[i]
             price = row['close']
@@ -87,22 +89,12 @@ class Backtester:
             # Current total value
             current_total_value = cash + (core_pos + trading_pos) * price
 
-            # Skip invalid prices (can happen with QFQ on old data)
+            # Skip invalid prices
             if price <= 0:
                 equity.append(current_total_value)
                 continue
 
-            signal = 'HOLD'
-            if strategy.mode == "aggressive":
-                if (row['close'] < row['bb_lower']) or (row['close'] < row['ema_mid'] and row['rsi'] < strategy.rsi_low + 5):
-                    signal = 'BUY'
-                elif (row['close'] > row['bb_upper']) or (row['close'] > row['ema_mid'] and row['rsi'] > strategy.rsi_high - 5):
-                    signal = 'SELL'
-            else:
-                if row['close'] < row['bb_lower'] and row['rsi'] < strategy.rsi_low:
-                    signal = 'BUY'
-                elif row['close'] > row['bb_upper'] and row['rsi'] > strategy.rsi_high:
-                    signal = 'SELL'
+            signal = signals_df.iloc[i]['signal']
             
             # Execute Trading Portion
             if signal == 'BUY' and cash > 0:
