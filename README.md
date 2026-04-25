@@ -40,7 +40,11 @@ A quantitative trading system designed for single-stock intraday/swing trading (
 - `utils/`: 
     - `i18n.py`: Internationalization support.
 
-## Strategy Logic
+## Strategy & Signals
+For a detailed explanation of strategy parameters, signal triggers, and the "Core + Trading" logic, please refer to:
+- [**STRATEGY.md**](./STRATEGY.md) (Detailed Strategy Guide)
+
+## Strategy Logic (Summary)
 - **Standard Mode**:
     - **Buy**: Price < Bollinger Lower Band **AND** RSI < Oversold Threshold.
     - **Sell**: Price > Bollinger Upper Band **AND** RSI > Overbought Threshold.
