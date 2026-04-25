@@ -14,11 +14,29 @@ This document provides a detailed explanation of the trading strategy used in th
 | **EMA Mid (中期均线)** | 20 | Used as the baseline for Bollinger Bands and a secondary trend indicator. <br> 作为布林带的中轨基准以及中期趋势指标。 |
 | **RSI Low (超卖阈值)** | 30 | The Relative Strength Index level indicating an oversold condition (potential buy). <br> 相对强弱指数，用于判断市场是否超卖（潜在买点）。 |
 | **RSI High (超买阈值)** | 70 | The Relative Strength Index level indicating an overbought condition (potential sell). <br> 相对强弱指数，用于判断市场是否超买（潜在卖点）。 |
-| **BB Std Dev (布林带标准差)** | 2.0 | Multiplier for volatility bands. Higher values require more extreme price moves to trigger signals. <br> 波动率通道乘数。值越高，需要越极端的波动才能触发信号。 |
+| **BB Std Dev (布林带标准差)** | 1.3 | Multiplier for volatility bands. Higher values require more extreme price moves to trigger signals. <br> 波动率通道乘数。值越高，需要越极端的波动才能触发信号。 |
 
 ---
 
-## 2. Signal Trigger Logic / 信号触发逻辑
+## 2. Sensitivity & Volatility (BB Std Dev) / 灵敏度与波动率
+
+The **BB Std Dev** setting determines how "wide" the Bollinger Bands are. This directly impacts how often signals are triggered:
+
+**BB Std Dev** 设置决定了布林带的“宽度”。这直接影响信号触发的频率：
+
+- **Low Value (1.0 - 1.5) / 低值**: 
+    - **EN:** Narrow bands. Triggers **many signals**, but may include more market "noise."
+    - **ZH:** 通道较窄。触发**大量信号**，但可能包含较多市场“噪音”。
+- **Standard Value (2.0) / 标准值**: 
+    - **EN:** Statistically contains ~95% of price action. A balanced setting for most stocks.
+    - **ZH:** 统计学上包含约 95% 的价格波动。大多数股票的平衡设置。
+- **High Value (2.5 - 3.0) / 高值**: 
+    - **EN:** Very wide bands. Triggers **few signals**, but entries are at extreme price points (higher accuracy).
+    - **ZH:** 通道极宽。触发**极少信号**，但切入点处于极端价位（准确率更高）。
+
+---
+
+## 3. Signal Trigger Logic / 信号触发逻辑
 
 The system supports two modes of execution:
 
@@ -48,7 +66,7 @@ The system supports two modes of execution:
 
 ---
 
-## 3. Backtest vs. Chart Signals / 回测与图表信号的区别
+## 4. Backtest vs. Chart Signals / 回测与图表信号的区别
 
 You may notice more signal markers on the chart than trades in the backtest report. This is due to the **Core + Trading** execution model:
 

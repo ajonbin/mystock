@@ -132,11 +132,12 @@ ema_long = st.sidebar.slider(get_text("ema_long", L), 30, 200, 60, key="ema_long
 ema_mid = st.sidebar.slider(get_text("ema_mid", L), 5, 50, 20, key="ema_mid")
 rsi_low = st.sidebar.slider(get_text("rsi_low", L), 10, 40, 30, key="rsi_low")
 rsi_high = st.sidebar.slider(get_text("rsi_high", L), 60, 90, 70, key="rsi_high")
-bb_std = st.sidebar.slider(get_text("bb_std", L), 1.0, 3.0, 2.0, 0.1, key="bb_std")
+bb_std = st.sidebar.slider(get_text("bb_std", L), 1.0, 3.0, 1.3, 0.1, key="bb_std")
 
 strategy_mode = st.sidebar.selectbox(
     get_text("strategy_mode", L),
     options=["standard", "aggressive"],
+    index=1,
     format_func=lambda x: get_text(f"mode_{x}", L),
     key="strategy_mode"
 )
@@ -188,9 +189,9 @@ with tab1:
             action_text = get_text(signal.action, L)
             st.metric(get_text("signal", L), action_text)
             if signal.action == 'BUY':
-                st.success(get_text("BUY", L))
+                st.error(get_text("BUY", L))
             elif signal.action == 'SELL':
-                st.error(get_text("SELL", L))
+                st.success(get_text("SELL", L))
             else:
                 st.info(get_text("HOLD", L))
 
@@ -257,7 +258,7 @@ with tab1:
                 y=buys['low'] * 0.98,
                 mode='markers',
                 name=get_text("BUY", L),
-                marker=dict(symbol='triangle-up', size=12, color='green', line=dict(width=1, color='DarkSlateGrey'))
+                marker=dict(symbol='triangle-up', size=12, color='red', line=dict(width=1, color='DarkSlateGrey'))
             ))
             
         if not sells.empty:
@@ -266,7 +267,7 @@ with tab1:
                 y=sells['high'] * 1.02,
                 mode='markers',
                 name=get_text("SELL", L),
-                marker=dict(symbol='triangle-down', size=12, color='red', line=dict(width=1, color='DarkSlateGrey'))
+                marker=dict(symbol='triangle-down', size=12, color='green', line=dict(width=1, color='DarkSlateGrey'))
             ))
         
         fig.update_layout(xaxis_rangeslider_visible=False, height=600)
